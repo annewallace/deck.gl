@@ -67,6 +67,40 @@ const IconLayerExample = {
   }
 };
 
+const IconLayerAutoPackingExample = {
+  layer: IconLayer,
+  getData: () => dataSamples.points,
+  props: {
+    id: 'icon-layer-experimental',
+    sizeScale: 24,
+    getPosition: d => d.COORDINATES,
+    getColor: d => [64, 64, 72],
+    getIcon: d => {
+      if (d.PLACEMENT === 'SW') {
+        return {
+          url: 'data/icon-marker.png',
+          width: 128,
+          height: 128,
+          anchorY: 128,
+          mask: true
+        };
+      }
+      return {
+        url: 'data/icon-warning.png',
+        width: 128,
+        height: 128,
+        anchorY: 128,
+        mask: false
+      };
+    },
+    getSize: d => {
+      return d.RACKS > 2 ? 2 : 1;
+    },
+    opacity: 0.8,
+    pickable: true
+  }
+};
+
 const GeoJsonLayerExample = {
   layer: GeoJsonLayer,
   getData: () => dataSamples.geojson,
@@ -388,6 +422,7 @@ export default {
     LineLayer: LineLayerExample,
     LineLayerNewCoords: LineLayerExampleNewCoords,
     IconLayer: IconLayerExample,
+    'IconLayer (auto packing)': IconLayerAutoPackingExample,
     GridCellLayer: GridCellLayerExample,
     GridLayer: GridLayerExample,
     ScreenGridLayer: ScreenGridLayerExample,
