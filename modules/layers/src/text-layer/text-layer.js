@@ -36,14 +36,33 @@ const ALIGNMENT_BASELINE = {
 
 const DEFAULT_FONT_FAMILY = 'Monaco, monospace';
 const DEFAULT_COLOR = [0, 0, 0, 255];
+const DEFAULT_FONT_SIZE = 64;
 
 const MISSING_CHAR_WIDTH = 32;
+
+const FONT_ATLAS_PROPS = [
+  'SDF',
+  'fontSize',
+  'buffer',
+  'radius',
+  'cutoff',
+  'fontFamily',
+  'fontWeight',
+  'characterSet'
+];
 
 const defaultProps = {
   fp64: false,
   sizeScale: 1,
-  fontFamily: DEFAULT_FONT_FAMILY,
+  // used in `makeFontAtlas`
+  SDF: false,
   characterSet: DEFAULT_CHAR_SET,
+  fontFamily: DEFAULT_FONT_FAMILY,
+  fontSize: DEFAULT_FONT_SIZE,
+  buffer: 0,
+  radius: 3,
+  cutoff: 0.25,
+  fontWeight: 'normal',
 
   getText: {type: 'accessor', value: x => x.text},
   getPosition: {type: 'accessor', value: x => x.position},
@@ -57,11 +76,9 @@ const defaultProps = {
 
 export default class TextLayer extends CompositeLayer {
   updateState({props, oldProps, changeFlags}) {
-    const fontChanged =
-      oldProps.fontFamily !== props.fontFamily || oldProps.characterSet !== props.characterSet;
-
+    const fontChanged = !FONT_ATLAS_PROPS.every(prop => oldProps[prop] === props[prop]);
     if (fontChanged) {
-      this.updateFontAtlas(props.fontFamily, props.characterSet);
+      this.updateFontAtlas();
     }
 
     if (
@@ -74,9 +91,24 @@ export default class TextLayer extends CompositeLayer {
     }
   }
 
-  updateFontAtlas(fontFamily, characterSet) {
+  updateFontAtlas() {
     const {gl} = this.context;
-    const {scale, mapping, texture} = makeFontAtlas(gl, {fontFamily, characterSet});
+    const {SDF, fontSize, buffer, radius, fontFamily, fontWeight, characterSet} = this.props;
+    const startTime = Date.now();
+
+    const {scale, mapping, texture} = makeFontAtlas(gl, {
+      SDF,
+      fontSize,
+      buffer,
+      radius,
+      fontFamily,
+      fontWeight,
+      characterSet
+    });
+
+    const timeDiff = Date.now() - startTime;
+    log.log(`Make font atlas in ${timeDiff} milliseconds.`)();
+
     this.setState({
       scale,
       iconAtlas: texture,
@@ -171,6 +203,8 @@ export default class TextLayer extends CompositeLayer {
       getTextAnchor,
       getAlignmentBaseline,
       getPixelOffset,
+      cutoff,
+      fontSmoothing,
       fp64,
       sizeScale,
       transitions,
@@ -194,8 +228,11 @@ export default class TextLayer extends CompositeLayer {
           getAnchorX: this.getAnchorXFromTextAnchor(getTextAnchor),
           getAnchorY: this.getAnchorYFromAlignmentBaseline(getAlignmentBaseline),
           getPixelOffset: this._getAccessor(getPixelOffset),
+          cutoff,
           fp64,
           sizeScale: sizeScale * scale,
+          fontSmoothing,
+
           transitions: transitions && {
             getPosition: transitions.getPosition,
             getAngle: transitions.getAngle,

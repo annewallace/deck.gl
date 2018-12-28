@@ -8,6 +8,10 @@
 
 The text layer renders text labels on the map using texture mapping. This Layer is extended based on [Icon Layer](/docs/layers/icon-layer.md) and wrapped using [Composite Layer](/docs/api-reference/composite-layer.md).
 
+##### Auto packing fontAtlas
+
+Auto pack required `characterSet` into a shared texture `fontAtlas`.
+
 ```js
 import DeckGL from 'deck.gl';
 import TextLayer from './text-layer';
@@ -24,6 +28,59 @@ const App = ({data, viewport}) => {
   const layer = new TextLayer({
     id: 'text-layer',
     data,
+
+    // used in generating `fontAtlas`
+    fontSize: 64,
+
+    pickable: true,
+    getPosition: d => d.coordinates,
+    getText: d => d.name,
+    getSize: 32,
+    getAngle: 0,
+    getTextAnchor: 'middle',
+    getAlignmentBaseline: 'center',
+    onHover: ({object, x, y}) => {
+      const tooltip = `${object.name}\n${object.address}`;
+      /* Update tooltip
+         http://deck.gl/#/documentation/developer-guide/adding-interactivity?section=example-display-a-tooltip-for-hovered-object
+      */
+    }
+  });
+
+  return <DeckGL {...viewport} layers={[layer]} />;
+};
+```
+
+### Rendering With SDF (Signed Distance Fields)
+
+This is slower than `Auto packing fontAtlas` but can provide a better antialiased look.
+
+```js
+import DeckGL from 'deck.gl';
+import TextLayer from './text-layer';
+
+const App = ({data, viewport}) => {
+  /**
+   * Data format:
+   * [
+   *   {name: 'Colma (COLM)', address: '365 D Street, Colma CA 94014', coordinates: [-122.466233, 37.684638]},
+   *   ...
+   * ]
+   */
+
+  const layer = new TextLayer({
+    id: 'text-layer',
+    data,
+    
+    SDF: false,
+    characterSet: DEFAULT_CHAR_SET,
+    fontFamily: DEFAULT_FONT_FAMILY,
+    fontSize: DEFAULT_FONT_SIZE,
+    buffer: 0,
+    radius: 3,
+    cutoff: 0.25,
+    fontWeight: 'normal',
+
     pickable: true,
     getPosition: d => d.coordinates,
     getText: d => d.name,
@@ -113,6 +170,48 @@ Specifies a prioritized list of one or more font family names and/or generic fam
 ##### `characterSet` (Array | String, optional)
 
 Specifies a list of characters to include in the font. By default, only characters in the Ascii code range 32-128 are included. Use this prop if you need to display special characters.
+
+##### `fontSize` (Number, optional)
+
+* Default: 64
+
+Used in generating `fontAtlas` or SDF.
+
+### Rendering With SDF (Signed Distance Fields)
+
+##### `SDF` (Boolean, optional)
+
+* Default: `false`
+
+Enable `SDF` (Signed Distance Fields) to render text.
+
+Implementation is based on [Drawing Text with Signed Distance Fields in Mapbox GL](https://blog.mapbox.com/drawing-text-with-signed-distance-fields-in-mapbox-gl-b0933af6f817), which uses [TinySDF](https://github.com/mapbox/tiny-sdf) library to calculate SDFs.
+
+`fontsize`, `fontFamily`, `buffer`, `radius`, `cutoff`, and `fontWeight` are forwarded to `TinySDF`.
+
+##### `buffer` (Number, optional)
+
+* Default: 0
+
+ Whitespace buffer around a glyph in pixels.
+
+##### `radius` (Number, optional)
+
+* Default: 3
+
+How much of the radius (relative) is used for the inside part the glyph.
+
+##### `cutoff` (Number, optional)
+
+* Default: 0.25
+
+How much of the radius (relative) is used for the inside part the glyph.
+
+##### `fontWeight` (Number, optional)
+
+* Default: 'normal'
+
+css `font-weight`.
 
 ### Text Alignment Options
 

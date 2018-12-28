@@ -21,6 +21,11 @@
 import IconLayer from '../../icon-layer/icon-layer';
 
 import vs from './multi-icon-layer-vertex.glsl';
+import fs from './multi-icon-layer-fragment.glsl';
+
+// TODO expose as layer properties
+const DEFAULT_SMOOTHING = 0;
+const DEFAULT_CUTOFF = 192.0 / 255.0;
 
 const defaultProps = {
   getShiftInQueue: {type: 'accessor', value: x => x.shift || 0},
@@ -35,7 +40,8 @@ const defaultProps = {
 export default class MultiIconLayer extends IconLayer {
   getShaders() {
     return Object.assign({}, super.getShaders(), {
-      vs
+      vs,
+      fs
     });
   }
 
@@ -62,6 +68,15 @@ export default class MultiIconLayer extends IconLayer {
     ) {
       this.getAttributeManager().invalidate('instanceOffsets');
     }
+  }
+
+  draw({uniforms}) {
+    super.draw({
+      uniforms: Object.assign({}, uniforms, {
+        cutoff: DEFAULT_CUTOFF,
+        smoothing: DEFAULT_SMOOTHING
+      })
+    });
   }
 
   calculateInstanceOffsets(attribute) {

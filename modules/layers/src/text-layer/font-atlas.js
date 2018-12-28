@@ -1,11 +1,11 @@
 /* global document */
 import {Texture2D} from 'luma.gl';
+import TinySDF from '@mapbox/tiny-sdf';
 
 const GL_TEXTURE_WRAP_S = 0x2802;
 const GL_TEXTURE_WRAP_T = 0x2803;
 const GL_CLAMP_TO_EDGE = 0x812f;
 const MAX_CANVAS_WIDTH = 1024;
-const DEFAULT_FONT_SIZE = 64;
 const DEFAULT_PADDING = 4;
 
 const BASELINE_SCALE = 0.9;
@@ -14,6 +14,15 @@ const HEIGHT_SCALE = 1.2;
 export const DEFAULT_CHAR_SET = [];
 for (let i = 32; i < 128; i++) {
   DEFAULT_CHAR_SET.push(String.fromCharCode(i));
+}
+
+function makeRGBAImageData(ctx, alphaChannel, size) {
+  const imageData = ctx.createImageData(size, size);
+  const data = imageData.data;
+  for (let i = 0; i < alphaChannel.length; i++) {
+    data[4 * i + 3] = alphaChannel[i];
+  }
+  return imageData;
 }
 
 function setTextStyle(ctx, fontFamily, fontSize) {
@@ -26,15 +35,21 @@ function setTextStyle(ctx, fontFamily, fontSize) {
 export function makeFontAtlas(
   gl,
   {
+    SDF,
+    fontSize,
+    buffer,
+    radius,
+    cutoff,
     fontFamily,
+    fontWeight,
     characterSet = DEFAULT_CHAR_SET,
-    fontSize = DEFAULT_FONT_SIZE,
     padding = DEFAULT_PADDING
   }
 ) {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
 
+  // build mapping
   // measure texts
   let row = 0;
   let x = 0;
@@ -65,8 +80,19 @@ export function makeFontAtlas(
   canvas.height = (row + 1) * (fontHeight + padding);
 
   setTextStyle(ctx, fontFamily, fontSize);
-  for (const char in mapping) {
-    ctx.fillText(char, mapping[char].x, mapping[char].y + fontSize * BASELINE_SCALE);
+
+  // layout characters
+  if (SDF) {
+    const tinySDF = new TinySDF(fontSize, buffer, radius, cutoff, fontFamily, fontWeight);
+
+    for (const char in mapping) {
+      const image = makeRGBAImageData(ctx, tinySDF.draw(char), fontSize);
+      ctx.putImageData(image, mapping[char].x, mapping[char].y);
+    }
+  } else {
+    for (const char in mapping) {
+      ctx.fillText(char, mapping[char].x, mapping[char].y + fontHeight * BASELINE_SCALE);
+    }
   }
 
   return {
