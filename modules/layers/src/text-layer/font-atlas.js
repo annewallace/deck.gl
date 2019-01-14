@@ -35,7 +35,7 @@ function setTextStyle(ctx, fontFamily, fontSize) {
 export function makeFontAtlas(
   gl,
   {
-    SDF,
+    sdf,
     fontSize,
     buffer,
     radius,
@@ -82,7 +82,7 @@ export function makeFontAtlas(
   setTextStyle(ctx, fontFamily, fontSize);
 
   // layout characters
-  if (SDF) {
+  if (sdf) {
     const tinySDF = new TinySDF(fontSize, buffer, radius, cutoff, fontFamily, fontWeight);
 
     for (const char in mapping) {
@@ -91,7 +91,7 @@ export function makeFontAtlas(
     }
   } else {
     for (const char in mapping) {
-      ctx.fillText(char, mapping[char].x, mapping[char].y + fontHeight * BASELINE_SCALE);
+      ctx.fillText(char, mapping[char].x, mapping[char].y + fontSize * BASELINE_SCALE);
     }
   }
 

@@ -51,7 +51,7 @@ const App = ({data, viewport}) => {
 };
 ```
 
-### Rendering With SDF (Signed Distance Fields)
+### Rendering With sdf (Signed Distance Fields)
 
 This is slower than `Auto packing fontAtlas` but can provide a better antialiased look.
 
@@ -72,7 +72,7 @@ const App = ({data, viewport}) => {
     id: 'text-layer',
     data,
     
-    SDF: false,
+    sdf: false,
     characterSet: DEFAULT_CHAR_SET,
     fontFamily: DEFAULT_FONT_FAMILY,
     fontSize: DEFAULT_FONT_SIZE,
@@ -175,17 +175,17 @@ Specifies a list of characters to include in the font. By default, only characte
 
 * Default: 64
 
-Used in generating `fontAtlas` or SDF.
+Used in generating `fontAtlas` or sdf.
 
-### Rendering With SDF (Signed Distance Fields)
+### Rendering With sdf (Signed Distance Fields)
 
-##### `SDF` (Boolean, optional)
+##### `sdf` (Boolean, optional)
 
 * Default: `false`
 
-Enable `SDF` (Signed Distance Fields) to render text.
+Enable `sdf` (Signed Distance Fields) to render text.
 
-Implementation is based on [Drawing Text with Signed Distance Fields in Mapbox GL](https://blog.mapbox.com/drawing-text-with-signed-distance-fields-in-mapbox-gl-b0933af6f817), which uses [TinySDF](https://github.com/mapbox/tiny-sdf) library to calculate SDFs.
+Implementation is based on [Drawing Text with Signed Distance Fields in Mapbox GL](https://blog.mapbox.com/drawing-text-with-signed-distance-fields-in-mapbox-gl-b0933af6f817), which uses [TinySDF](https://github.com/mapbox/tiny-sdf) library to calculate sdfs.
 
 `fontsize`, `fontFamily`, `buffer`, `radius`, `cutoff`, and `fontWeight` are forwarded to `TinySDF`.
 

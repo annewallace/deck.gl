@@ -40,8 +40,8 @@ const DEFAULT_FONT_SIZE = 64;
 
 const MISSING_CHAR_WIDTH = 32;
 
-const FONT_ATLAS_PROPS = [
-  'SDF',
+const fontAtlasProps = [
+  'sdf',
   'fontSize',
   'buffer',
   'radius',
@@ -55,7 +55,7 @@ const defaultProps = {
   fp64: false,
   sizeScale: 1,
   // used in `makeFontAtlas`
-  SDF: false,
+  sdf: false,
   characterSet: DEFAULT_CHAR_SET,
   fontFamily: DEFAULT_FONT_FAMILY,
   fontSize: DEFAULT_FONT_SIZE,
@@ -76,7 +76,7 @@ const defaultProps = {
 
 export default class TextLayer extends CompositeLayer {
   updateState({props, oldProps, changeFlags}) {
-    const fontChanged = !FONT_ATLAS_PROPS.every(prop => oldProps[prop] === props[prop]);
+    const fontChanged = !fontAtlasProps.every(prop => oldProps[prop] === props[prop]);
     if (fontChanged) {
       this.updateFontAtlas();
     }
@@ -92,22 +92,15 @@ export default class TextLayer extends CompositeLayer {
   }
 
   updateFontAtlas() {
-    const {gl} = this.context;
-    const {SDF, fontSize, buffer, radius, fontFamily, fontWeight, characterSet} = this.props;
     const startTime = Date.now();
 
-    const {scale, mapping, texture} = makeFontAtlas(gl, {
-      SDF,
-      fontSize,
-      buffer,
-      radius,
-      fontFamily,
-      fontWeight,
-      characterSet
-    });
+    const {gl} = this.context;
+    const params = {};
+    fontAtlasProps.forEach(prop => (params[prop] = this.props[prop]));
 
-    const timeDiff = Date.now() - startTime;
-    log.log(`Make font atlas in ${timeDiff} milliseconds.`)();
+    const {scale, mapping, texture} = makeFontAtlas(gl, params);
+
+    log.log(`Make font atlas in ${Date.now() - startTime} milliseconds.`)();
 
     this.setState({
       scale,
@@ -203,9 +196,8 @@ export default class TextLayer extends CompositeLayer {
       getTextAnchor,
       getAlignmentBaseline,
       getPixelOffset,
-      cutoff,
-      fontSmoothing,
       fp64,
+      sdf,
       sizeScale,
       transitions,
       updateTriggers
@@ -216,6 +208,7 @@ export default class TextLayer extends CompositeLayer {
         this.getSubLayerProps({
           id: 'text-multi-icon-layer',
           data,
+          sdf,
           iconAtlas,
           iconMapping,
           getIcon: d => d.text,
@@ -228,10 +221,8 @@ export default class TextLayer extends CompositeLayer {
           getAnchorX: this.getAnchorXFromTextAnchor(getTextAnchor),
           getAnchorY: this.getAnchorYFromAlignmentBaseline(getAlignmentBaseline),
           getPixelOffset: this._getAccessor(getPixelOffset),
-          cutoff,
           fp64,
           sizeScale: sizeScale * scale,
-          fontSmoothing,
 
           transitions: transitions && {
             getPosition: transitions.getPosition,

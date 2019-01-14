@@ -24,7 +24,7 @@ import vs from './multi-icon-layer-vertex.glsl';
 import fs from './multi-icon-layer-fragment.glsl';
 
 // TODO expose as layer properties
-const DEFAULT_SMOOTHING = 0;
+const DEFAULT_SMOOTHING = 0.5;
 const DEFAULT_CUTOFF = 192.0 / 255.0;
 
 const defaultProps = {
@@ -71,10 +71,12 @@ export default class MultiIconLayer extends IconLayer {
   }
 
   draw({uniforms}) {
+    const {sdf} = this.props;
     super.draw({
       uniforms: Object.assign({}, uniforms, {
         cutoff: DEFAULT_CUTOFF,
-        smoothing: DEFAULT_SMOOTHING
+        smoothing: DEFAULT_SMOOTHING,
+        sdf
       })
     });
   }
