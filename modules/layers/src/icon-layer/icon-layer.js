@@ -135,15 +135,7 @@ export default class IconLayer extends Layer {
     const {gl} = this.context;
     const attributeManager = this.getAttributeManager();
 
-    iconManager.updateState({oldProps, props});
-
-    if (
-      changeFlags &&
-      changeFlags.updateTriggersChanged &&
-      changeFlags.updateTriggersChanged.getIcon
-    ) {
-      attributeManager.invalidate('getIcon');
-    }
+    iconManager.updateState({oldProps, props, changeFlags});
 
     if (props.fp64 !== oldProps.fp64) {
       if (this.state.model) {

@@ -1,9 +1,8 @@
 /* eslint-disable */
-import GL from 'luma.gl/constants';
+import GL from '@luma.gl/constants';
 import {Texture2D, loadImages, loadTextures} from 'luma.gl';
 
 const MAX_CANVAS_WIDTH = 1024;
-const MAX_CANVAS_HEIGHT = 768;
 
 const DEFAULT_TEXTURE_MIN_FILTER = GL.LINEAR_MIPMAP_LINEAR;
 // GL.LINEAR is the default value but explicitly set it here
@@ -25,27 +24,6 @@ function buildRowMapping(mapping, columns, yOffset) {
       y: yOffset
     });
   }
-}
-
-function getIcons(data, getIcon) {
-  if (!data) {
-    return null;
-  }
-
-  return data.reduce((resMap, point) => {
-    const icon = getIcon(point);
-    if (!resMap[icon.url]) {
-      resMap[icon.url] = icon;
-    }
-    return resMap;
-  }, {});
-}
-
-// check if there are some icons from new data not fetched
-export function needRepack(oldData, data, getIcon) {
-  const oldIcons = getIcons(oldData, getIcon) || {};
-  const icons = getIcons(data, getIcon) || {};
-  return !Object.keys(icons).every(icon => oldIcons[icon]);
 }
 
 /**
@@ -80,10 +58,6 @@ export function buildMapping({icons, maxCanvasWidth, maxCanvasHeight}) {
 
       // fill one row
       if (xOffset + width > maxCanvasWidth) {
-        if (rowHeight + yOffset > maxCanvasHeight) {
-          // TODO
-        }
-
         buildRowMapping(mapping, columns, yOffset);
 
         xOffset = 0;
@@ -113,25 +87,30 @@ export function buildMapping({icons, maxCanvasWidth, maxCanvasHeight}) {
   };
 }
 
+function getIcons(data, getIcon) {
+  if (!data) {
+    return null;
+  }
+
+  return data.reduce((resMap, point) => {
+    const icon = getIcon(point);
+    if (!resMap[icon.url]) {
+      resMap[icon.url] = icon;
+    }
+    return resMap;
+  }, {});
+}
+
 export default class IconManager {
   constructor(
     gl,
-    {
-      data,
-      iconAtlas,
-      iconMapping,
-      getIcon,
-      onUpdate = noop,
-      maxCanvasWidth = MAX_CANVAS_WIDTH,
-      maxCanvasHeight = MAX_CANVAS_HEIGHT
-    }
+    {data, iconAtlas, iconMapping, getIcon, onUpdate = noop, maxCanvasWidth = MAX_CANVAS_WIDTH}
   ) {
     this.gl = gl;
 
     this.getIcon = getIcon;
     this.onUpdate = onUpdate;
     this.maxCanvasWidth = maxCanvasWidth;
-    this.maxCanvasHeight = maxCanvasHeight;
 
     if (iconAtlas) {
       this._mapping = iconMapping;
@@ -151,18 +130,19 @@ export default class IconManager {
     return this._mapping[name];
   }
 
-  updateState({oldProps, props}) {
+  updateState({oldProps, props, changeFlags}) {
     if (props.iconAtlas) {
-      this._updatePrePacked({oldProps, props});
+      this._updatePrePacked({oldProps, props, changeFlags});
     } else {
-      this._updateAutoPacking({oldProps, props});
+      this._updateAutoPacking({oldProps, props, changeFlags});
     }
   }
 
   _updatePrePacked({oldProps, props}) {
     const {iconAtlas, iconMapping} = props;
-    if (iconMapping && oldProps.iconMapping !== iconMapping) {
-      this._mapping = iconMapping;
+
+    this._mapping = iconMapping;
+    if (oldProps.iconMapping !== iconMapping) {
       this.onUpdate({mappingChanged: true});
     }
 
@@ -171,9 +151,12 @@ export default class IconManager {
     }
   }
 
-  _updateAutoPacking({oldProps, props}) {
-    if (needRepack(oldProps.data, props.data, this.getIcon)) {
-      // if any icons are not fetched, re-layout the entire icon texture
+  _updateAutoPacking({oldProps, props, changeFlags}) {
+    if (
+      changeFlags.dataChanged ||
+      changeFlags.updateTriggersChanged.all ||
+      changeFlags.updateTriggersChanged.getIcon
+    ) {
       this._autoPackTexture(props.data);
     }
   }
@@ -189,13 +172,14 @@ export default class IconManager {
       this.onUpdate({textureChanged: true});
     } else if (typeof iconAtlas === 'string') {
       loadTextures(this.gl, {
-        urls: [iconAtlas]
-      }).then(([texture]) => {
-        texture.setParameters({
+        urls: [iconAtlas],
+        parameters: {
           [GL.TEXTURE_MIN_FILTER]: DEFAULT_TEXTURE_MIN_FILTER,
-          [GL.TEXTURE_MAG_FILTER]: DEFAULT_TEXTURE_MAG_FILTER
-        });
-
+          [GL.TEXTURE_MAG_FILTER]: DEFAULT_TEXTURE_MAG_FILTER,
+          // `unpackFlipY` is true by default
+          unpackFlipY: false
+        }
+      }).then(([texture]) => {
         this._texture = texture;
         this.onUpdate({textureChanged: true});
       });
@@ -203,13 +187,13 @@ export default class IconManager {
   }
 
   _autoPackTexture(data) {
-    const {maxCanvasWidth, maxCanvasHeight, getIcon} = this;
-    if (data) {
+    if (data && data.length) {
+      const {maxCanvasWidth, getIcon} = this;
+      const icons = Object.values(getIcons(data, getIcon));
       // generate icon mapping
       const {mapping, canvasHeight} = buildMapping({
-        icons: Object.values(getIcons(data, getIcon)),
-        maxCanvasWidth,
-        maxCanvasHeight
+        icons,
+        maxCanvasWidth
       });
 
       this._mapping = mapping;
@@ -223,35 +207,35 @@ export default class IconManager {
       this.onUpdate({mappingChanged: true, textureChanged: true});
 
       // load images
-      this._loadImages(data);
+      this._loadImages(icons);
     }
   }
 
-  _loadImages(data) {
-    for (let i = 0; i < data.length; i++) {
-      const icon = this.getIcon(data[i]);
+  _loadImages(icons) {
+    for (const icon of icons) {
       if (icon.url) {
         loadImages({urls: [icon.url]}).then(([imageData]) => {
+          const {naturalWidth, naturalHeight} = imageData;
           const iconMapping = this._mapping[icon.url];
-          const {x, y, width, height} = iconMapping;
+          Object.assign(iconMapping, {naturalWidth, naturalHeight});
+          const {x, y} = iconMapping;
 
-          // update texture
+          // update texture with image actual dimention
           this._texture.setSubImageData({
             data: imageData,
             x,
             y,
-            width,
-            height,
+            width: naturalWidth,
+            height: naturalHeight,
             parameters: {
               [GL.TEXTURE_MIN_FILTER]: DEFAULT_TEXTURE_MIN_FILTER,
-              [GL.TEXTURE_MAG_FILTER]: DEFAULT_TEXTURE_MAG_FILTER,
-              [GL.UNPACK_FLIP_Y_WEBGL]: true
+              [GL.TEXTURE_MAG_FILTER]: DEFAULT_TEXTURE_MAG_FILTER
             }
           });
+
           // Call to regenerate mipmaps after modifying texture(s)
           this._texture.generateMipmap();
-
-          this.onUpdate({textureChanged: true});
+          this.onUpdate({mappingChanged: true, textureChanged: true});
         });
       }
     }

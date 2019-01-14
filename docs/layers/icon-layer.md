@@ -8,14 +8,15 @@
 
 The Icon Layer renders raster icons at given coordinates.
 
+### Render Options
+
+There are two approaches to load icons. You can pre-packed all icons into a sprite image (`iconAtlas`) and a JSON descriptor (`iconMapping`). 
+You can also provide url for each icon, `IconLayer` will fetch the icons and automatically pack them into a `iconAtlas`.
+
 ## Pre-packed iconAtlas
 
 ```js
 import DeckGL, {IconLayer} from 'deck.gl';
-
-const ICON_MAPPING = {
-  marker: {x: 0, y: 0, width: 32, height: 32, mask: true}
-};
 
 const App = ({data, viewport}) => {
 
@@ -63,39 +64,54 @@ const App = ({data, viewport}) => {
 
 ## Auto packing iconAtlas
 
+- In some use cases, it is not possible to know the icons that will be used. Instead, each icon needs to be fetched from
+ a programmatically generated URL at runtime. For example, if you want to visualize avatars of github contributors for a project on a map,
+ It is not convenient for you to generate the `iconAtlas` with all the contributors' avatars. In this case, you can follow [auto packing](#auto-packing-iconatlas) approach.
+- Auto packing icons is less efficient than pre-packed because the former needs go through all the icons to calculate `iconMapping` 
+  and update texture data when each icon fetched.
+
 ```js
 import DeckGL, {IconLayer} from 'deck.gl';
-
-const ICON_MAPPING = {
-  marker: {x: 0, y: 0, width: 32, height: 32, mask: true}
-};
+import Octokit from '@octokit/rest';
+const octokit = new Octokit()
 
 const App = ({data, viewport}) => {
 
   /**
    * Data format:
    * [
-   *   {name: 'Colma (COLM)', avatar_url: 'https://images/colma_avatar.png', address: '365 D Street, Colma CA 94014', exits: 4214, coordinates: [-122.466233, 37.684638]},
-   *   ...
+   *   {
+   *     avatar_url: "https://avatars1.githubusercontent.com/u/7025232?v=4",
+   *     contributions: 620,
+   *     id: 7025232,
+   *     login: "ibgreen",
+   *     type: "User",
+   *     ...
+   *   }
    * ]
    */
   const layer = new IconLayer({
     id: 'icon-layer',
-    data,
-    pickable: true,
+    data: octokit.repos.listContributors({
+      owner: 'uber',
+      repo: 'deck.gl' 
+    }).then(result => result.data),
     // iconAtlas and iconMapping should not be provided
-    // getIcon return an object which contains url to fetch icon
+    // getIcon return an object which contains url to fetch icon of each data point
     getIcon: d => ({
       url: d.avatar_url,
-      width: 128,
-      height: 128,
-      anchorY: 128,
+      // Note: width and height need to be equal or larger than the actual icon size 
+      width: 500,
+      height: 500,
+      anchorY: 500,
       mask: true
     }),
+    // icon size is based on data point's contributions, between 2 -25 
+    getSize: d => Math.max(2, Math.min(d.contributions / 1000 * 25, 25)),
 
+    pickable: true,
     sizeScale: 15,
     getPosition: d => d.coordinates,
-    getSize: d => 5,
     getColor: d => [Math.sqrt(d.exits), 140, 0],
     onHover: ({object, x, y}) => {
       const tooltip = `${object.name}\n${object.address}`;
@@ -112,19 +128,6 @@ const App = ({data, viewport}) => {
 ## Properties
 
 Inherits from all [Base Layer](/docs/api-reference/layer.md) properties.
-
-### Render Options
-
-There are two approaches to load icons. You can pre-packed all icons into a sprite image (`iconAtlas`) and a JSON descriptor (`iconMapping`). 
-You can also provide url for each icon, `IconLayer` will fetch the icons and automatically pack them into a `iconAtlas`.
-
-#### Pre-packed vs Auto packing
-
-- In some use cases, it is not possible to know the icons that will be used. Instead, each icon needs to be fetched from
- a programmatically generated URL at runtime. For example, if you want to visualize avatars of github contributors for a project on a map,
- It is not convenient for you to generate the `iconAtlas` with all the contributors' avatars. In this case, you can follow [auto packing](#auto-packing-iconatlas) approach.
-- Auto packing icons is less efficient than pre-packed because the former needs go through all the icons to calculate `iconMapping` 
-  and update texture data when each icon fetched.
 
 #### Pre-packed iconAtlas
 
