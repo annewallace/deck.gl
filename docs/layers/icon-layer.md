@@ -8,12 +8,14 @@
 
 The Icon Layer renders raster icons at given coordinates.
 
-### Render Options
-
 There are two approaches to load icons. You can pre-packed all icons into a sprite image (`iconAtlas`) and a JSON descriptor (`iconMapping`). 
-You can also provide url for each icon, `IconLayer` will fetch the icons and automatically pack them into a `iconAtlas`.
+Or you can provide url for each icon, `IconLayer` will fetch the icons and automatically pack them into a `iconAtlas`.
 
-## Pre-packed iconAtlas
+`iconAtlas` or called icon sprite is a collection of icons put into one image in a certain layout, and `iconMapping` is icon definitions
+to icon name mapping, which describes the layout and is used to locate each icon in the `iconAtlas`. `iconAtlas` is similar to the images 
+you can get using [TexturePacker](https://www.codeandweb.com/texturepacker)
+
+## Example: pre-packed iconAtlas
 
 ```js
 import DeckGL, {IconLayer} from 'deck.gl';
@@ -62,13 +64,14 @@ const App = ({data, viewport}) => {
 };
 ```
 
-## Auto packing iconAtlas
+## Example: auto packing iconAtlas
 
-- In some use cases, it is not possible to know the icons that will be used. Instead, each icon needs to be fetched from
- a programmatically generated URL at runtime. For example, if you want to visualize avatars of github contributors for a project on a map,
- It is not convenient for you to generate the `iconAtlas` with all the contributors' avatars. In this case, you can follow [auto packing](#auto-packing-iconatlas) approach.
-- Auto packing icons is less efficient than pre-packed because the former needs go through all the icons to calculate `iconMapping` 
-  and update texture data when each icon fetched.
+In some use cases, it is not possible to know the icons that will be used. Instead, each icon needs to be fetched from 
+a programmatically generated URL at runtime. For example, if you want to visualize avatars of github contributors for 
+a project on a map, it is not convenient for you to generate the `iconAtlas` with all the contributors' avatars. 
+In this case, you can follow [auto packing](#auto-packing-iconatlas) approach. Auto packing icons is less efficient 
+than pre-packed because the former needs go through all the icons to calculate `iconMapping` and update texture data 
+when each icon fetched.
 
 ```js
 import DeckGL, {IconLayer} from 'deck.gl';
@@ -129,13 +132,11 @@ const App = ({data, viewport}) => {
 
 Inherits from all [Base Layer](/docs/api-reference/layer.md) properties.
 
-#### Pre-packed iconAtlas
-
-##### `iconAtlas` (Texture2D | String, required)
+##### `iconAtlas` (Texture2D | String)
 
 Atlas image url or texture
 
-##### `iconMapping` (Object | String, required)
+##### `iconMapping` (Object | String)
 
 Icon names mapped to icon definitions. Each icon is defined with the following values:
 
@@ -149,29 +150,12 @@ Icon names mapped to icon definitions. Each icon is defined with the following v
   If `true`, user defined color is applied.
   If `false`, pixel color from the image is applied. User still can specify the opacity through getColor.
   Default: `false`
-  
-##### `getIcon` (Function, optional)
 
-- Default: `d => d.icon`
+If you go with pre-packed strategy, both `iconAtlas` and `iconMapping` are required. 
 
-Method called to retrieve the icon name of each object, returns string.
-
-#### Auto packing iconAtlas
-
-`iconAtlas` and `iconMapping` should not be provided in this case, otherwise it may cause error since `IconLayer` will attempt to retrieve icons from given pre-packed `iconAtlas`
-
-##### `getIcon` (Function, optional)
-
-- Default: `d => d.icon`
-
-Return an object which contains the following properties. 
-
-- `url`: url to fetch the icon
-- `height`: height of icon
-- `width`: width of icon
-- `anchorX`, `anchorY`, `mask` are the same as mentioned in `iconMapping`
-
-#### Options in both pre-packed and auto packing cases
+If you choose to use auto packing, then `iconAtlas` and `iconMapping` should not be provided, 
+otherwise it causes error since `IconLayer` will attempt to retrieve icons from 
+given pre-packed `iconAtlas`.
 
 ##### `sizeScale` (Number, optional)
 
@@ -186,6 +170,23 @@ Icon size multiplier.
 Whether the layer should be rendered in high-precision 64-bit mode. Note that since deck.gl v6.1, the default 32-bit projection uses a hybrid mode that matches 64-bit precision with significantly better performance.
 
 ### Data Accessors
+
+##### `getIcon` (Function, optional)
+
+- Default: `d => d.icon`
+
+Method called to retrieve the icon name of each object, returns string or object.
+
+If you go with pre-packed strategy, then `getIcon` should return a string representing name of the icon, 
+used to retrieve icon definition from given `iconMapping`.
+
+If you choose to use auto packing, then `getIcon` should return an object which contains 
+the following properties. 
+
+- `url`: url to fetch the icon
+- `height`: height of icon
+- `width`: width of icon
+- `anchorX`, `anchorY`, `mask` are the same as mentioned in `iconMapping`
 
 ##### `getPosition` (Function, optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square")
 

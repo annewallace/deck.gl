@@ -66,6 +66,8 @@ void main(void) {
     instanceIconFrames.xy + iconSize,
     (positions.xy + 1.0) / 2.0
   ) / iconsTextureDim;
+  
+  vTextureCoords.y = 1.0 -  vTextureCoords.y;
 
   vColor = instanceColors / 255.;
 

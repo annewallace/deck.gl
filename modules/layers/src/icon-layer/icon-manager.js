@@ -47,7 +47,7 @@ export function buildMapping({icons, maxCanvasWidth, maxCanvasHeight}) {
   // Strategy to layout all the icons into a texture:
   // traverse the icons sequentially, layout the icons from left to right, top to bottom
   // when the sum of the icons width is equal or larger than maxCanvasWidth,
-  // move to next row from total height so far plus max height of the icons in previous row
+  // move to next row starting from total height so far plus max height of the icons in previous row
   // row width is equal to maxCanvasWidth
   // row height is decided by the max height of the icons in that row
   // mapping coordinates of each icon is its left-top position in the texture
@@ -81,24 +81,27 @@ export function buildMapping({icons, maxCanvasWidth, maxCanvasHeight}) {
   }
 
   const canvasHeight = nextPowOfTwo(rowHeight + yOffset);
+
   return {
     mapping,
     canvasHeight
   };
 }
 
+// extract unique icons from data
 function getIcons(data, getIcon) {
   if (!data) {
     return null;
   }
 
-  return data.reduce((resMap, point) => {
+  const icons = {};
+  for (const point of data) {
     const icon = getIcon(point);
-    if (!resMap[icon.url]) {
-      resMap[icon.url] = icon;
+    if (!icons[icon.url]) {
+      icons[icon.url] = icon;
     }
-    return resMap;
-  }, {});
+  }
+  return icons;
 }
 
 export default class IconManager {
@@ -127,7 +130,7 @@ export default class IconManager {
   getIconMapping(dataPoint) {
     const icon = this.getIcon(dataPoint);
     const name = icon ? (typeof icon === 'object' ? icon.url : icon) : null;
-    return this._mapping[name];
+    return this._mapping[name] || {};
   }
 
   updateState({oldProps, props, changeFlags}) {
@@ -175,9 +178,7 @@ export default class IconManager {
         urls: [iconAtlas],
         parameters: {
           [GL.TEXTURE_MIN_FILTER]: DEFAULT_TEXTURE_MIN_FILTER,
-          [GL.TEXTURE_MAG_FILTER]: DEFAULT_TEXTURE_MAG_FILTER,
-          // `unpackFlipY` is true by default
-          unpackFlipY: false
+          [GL.TEXTURE_MAG_FILTER]: DEFAULT_TEXTURE_MAG_FILTER
         }
       }).then(([texture]) => {
         this._texture = texture;
@@ -187,13 +188,12 @@ export default class IconManager {
   }
 
   _autoPackTexture(data) {
-    if (data && data.length) {
-      const {maxCanvasWidth, getIcon} = this;
-      const icons = Object.values(getIcons(data, getIcon));
+    let icons = Object.values(getIcons(data, this.getIcon) || {});
+    if (icons.length > 0) {
       // generate icon mapping
       const {mapping, canvasHeight} = buildMapping({
         icons,
-        maxCanvasWidth
+        maxCanvasWidth: this.maxCanvasWidth
       });
 
       this._mapping = mapping;
@@ -212,24 +212,25 @@ export default class IconManager {
   }
 
   _loadImages(icons) {
+    const canvasHeight = this._texture.height;
     for (const icon of icons) {
       if (icon.url) {
         loadImages({urls: [icon.url]}).then(([imageData]) => {
           const {naturalWidth, naturalHeight} = imageData;
           const iconMapping = this._mapping[icon.url];
-          Object.assign(iconMapping, {naturalWidth, naturalHeight});
-          const {x, y} = iconMapping;
+          const {x, y, height} = iconMapping;
 
-          // update texture with image actual dimention
+          // update texture with image actual dimension
           this._texture.setSubImageData({
             data: imageData,
             x,
-            y,
+            y: canvasHeight - y - height, // flip Y as texture stored as reversed Y
             width: naturalWidth,
             height: naturalHeight,
             parameters: {
               [GL.TEXTURE_MIN_FILTER]: DEFAULT_TEXTURE_MIN_FILTER,
-              [GL.TEXTURE_MAG_FILTER]: DEFAULT_TEXTURE_MAG_FILTER
+              [GL.TEXTURE_MAG_FILTER]: DEFAULT_TEXTURE_MAG_FILTER,
+              [GL.UNPACK_FLIP_Y_WEBGL]: true
             }
           });
 

@@ -132,17 +132,15 @@ export default class IconLayer extends Layer {
     super.updateState({props, oldProps, changeFlags});
 
     const {iconManager} = this.state;
-    const {gl} = this.context;
-    const attributeManager = this.getAttributeManager();
-
     iconManager.updateState({oldProps, props, changeFlags});
 
     if (props.fp64 !== oldProps.fp64) {
+      const {gl} = this.context;
       if (this.state.model) {
         this.state.model.delete();
       }
       this.setState({model: this._getModel(gl)});
-      attributeManager.invalidateAll();
+      this.getAttributeManager().invalidateAll();
     }
   }
 
@@ -219,7 +217,7 @@ export default class IconLayer extends Layer {
     const {value} = attribute;
     let i = 0;
     for (const object of data) {
-      const rect = iconManager.getIconMapping(object) || {};
+      const rect = iconManager.getIconMapping(object);
       value[i++] = rect.width / 2 - rect.anchorX || 0;
       value[i++] = rect.height / 2 - rect.anchorY || 0;
     }
@@ -231,8 +229,8 @@ export default class IconLayer extends Layer {
     const {value} = attribute;
     let i = 0;
     for (const object of data) {
-      const mapping = iconManager.getIconMapping(object) || {};
-      const colorMode = mapping && mapping.mask;
+      const mapping = iconManager.getIconMapping(object);
+      const colorMode = mapping.mask;
       value[i++] = colorMode ? 1 : 0;
     }
   }
@@ -243,7 +241,7 @@ export default class IconLayer extends Layer {
     const {value} = attribute;
     let i = 0;
     for (const object of data) {
-      const rect = iconManager.getIconMapping(object) || {};
+      const rect = iconManager.getIconMapping(object);
       value[i++] = rect.x || 0;
       value[i++] = rect.y || 0;
       value[i++] = rect.width || 0;
